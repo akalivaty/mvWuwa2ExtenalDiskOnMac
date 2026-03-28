@@ -1,12 +1,12 @@
-# Move Wuthering Waves to an External Disk on macOS
+# 在 macOS 上把鳴潮移到外接硬碟
 
 [English](./README.md) | [繁體中文](./README.zh-TW.md)
 
-## Summary
+## 摘要
 
-- Wuthering Waves version: `3.2.0`
-- macOS version: `26.4 (25E246)`
-- External disk: `Samsung T7 1TB`
+- 鳴潮版本：`3.2.0`
+- macOS 版本：`26.4 (25E246)`
+- 外接硬碟：`Samsung T7 1TB`
 
 ```text
 T7
@@ -37,47 +37,47 @@ T7
                 └── Base (downloading...)
 ```
 
-The game uses two resource paths:
+遊戲會使用兩個資源路徑：
 
 1. `~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0`
 2. `~/Library/Client/Saved/Resources/3.2.0`
 
-Initially, Wuthering Waves usually downloads additional resources to the first path. If a symlink is found, it will download to the second path. Therefore, a single symlink is usually not enough.
+一開始鳴潮通常會先下載額外資源到第一個路徑，如果發現有 symlink 則會下載到第二個路徑，所以只 symlink 一個通常不夠。
 
 ```shell
 ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
 ```
 
-It may still write to the second path afterward.
+接著它可能又會改寫到第二個路徑。
 
-Final conclusion: the most reliable method is to symlink **both paths** to the same external folder.
+結論：最穩定的做法是把 **兩條路徑都 symlink 到同一個外接資料夾**。
 
-## Full Steps
+## 完整步驟
 
-### Step 0: Fully close the game first
+### Step 0：先完全關掉遊戲
 
-Close all of the following before changing symlinks:
+先關掉：
 
-- Wuthering Waves
-- Any active downloader process
+- 鳴潮
+- 任何還在下載的程序
 
-Do not modify symlinks while the game is downloading.
+不要在遊戲下載途中修改 symlink。
 
-### Step 1: Prepare target folder on external SSD
+### Step 1：建立外接 SSD 目的資料夾
 
-Create the destination folder:
+先建立外接硬碟上的目標路徑：
 
 ```shell
 mkdir -p "/Volumes/T7/WuwaData/Resources/3.2.0"
 ```
 
-This is where game resources should actually live.
+這個資料夾就是之後真正存放資源的位置。
 
-If some files were already downloaded locally, either remove them or move them to T7.
+如果本機已經下載了一部分資料，請先刪除或搬移到 T7。
 
-### Step 2: Symlink the first resource entry
+### Step 2：把第一個入口改成 symlink
 
-Remove existing local folder or move it to T7:
+先刪除本機原本的 `3.2.0` 或搬到 T7：
 
 ```shell
 rm -rf "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
@@ -87,29 +87,29 @@ rm -rf "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Cli
 mv "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0" "/Volumes/T7/WuwaData/Resources/3.2.0"
 ```
 
-Create symlink:
+再建立連結：
 
 ```shell
 ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
 ```
 
-### Step 3: Symlink the second resource entry as well
+### Step 3：把第二個入口也改成 symlink
 
-Remove existing local folder:
+先刪除本機原本的 `3.2.0`：
 
 ```shell
 rm -rf "~/Library/Client/Saved/Resources/3.2.0"
 ```
 
-Create symlink:
+再建立連結：
 
 ```shell
 ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Client/Saved/Resources/3.2.0"
 ```
 
-### Step 4: Verify both links
+### Step 4：檢查兩條路徑是否都正確
 
-Run:
+執行：
 
 ```shell
 ls -l "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
@@ -119,7 +119,7 @@ ls -l "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Clie
 ls -l "~/Library/Client/Saved/Resources/3.2.0"
 ```
 
-Expected output should look like:
+理想結果會像：
 
 ```shell
 $ ls -l
@@ -128,61 +128,61 @@ lrwxr-xr-x@ 1 yuva  staff   36 Feb 13 14:41 3.1.0 -> /Volumes/T7/WuwaData/Resour
 lrwxr-xr-x@ 1 yuva  staff   36 Mar 29 04:02 3.2.0 -> /Volumes/T7/WuwaData/Resources/3.2.0
 ```
 
-As long as both entries point to the same external folder, it is correct.
+只要兩邊都指向同一個外接資料夾就正確。
 
-### Step 5: Reopen game and continue download
+### Step 5：重新開遊戲繼續下載
 
-Start the game again.
+重新啟動遊戲。
 
-Whether it uses:
+不論它走：
 
 - `~/Library/Containers/.../3.2.0`
 - `~/Library/Client/.../3.2.0`
 
-it should eventually write to:
+最後都應該寫到：
 
 `/Volumes/T7/WuwaData/Resources/3.2.0`
 
-### Step 6: Confirm files are being downloaded to T7
+### Step 6：確認真的下載到 T7
 
-Open this folder in Finder:
+在 Finder 直接打開：
 
 `/Volumes/T7/WuwaData/Resources/3.2.0`
 
-or
+或是
 
 ```shell
 cd "/Volumes/T7/WuwaData/Resources/3.2.0"
 du -hd 1 | sort -hr
 ```
 
-If files keep increasing, the setup is working.
+如果檔案持續增加，代表已成功下載到外接 SSD。
 
-### Rules of thumb
+### 判斷是否成功
 
-If you see these two prompts after launching Wuthering Waves, setup is likely successful:
+開啟鳴潮後如果出現以下兩個請求，通常表示設定成功：
 
 ![img](./assets/Screenshot%202026-03-29%20at%2003.51.06.png)
 ![img](./assets/Screenshot%202026-03-29%20at%2003.52.21.png)
 
 ### Codesign
 
-If you get a launch error like `Failed to ...` after moving app resources, run:
+如果進入遊戲時出現像 `Failed to ...` 的啟動錯誤，可嘗試：
 
 ```shell
 sudo codesign --sign - --force --deep "/Volumes/T7/Applications/WutheringWaves.app"
 ```
 
-In this case, the app was installed to external storage through the App Store, so the path is:
+這裡的路徑是因為透過 App Store 安裝到外接硬碟：
 
 `/Volumes/T7/Applications/WutheringWaves.app`
 
-If your app is on internal storage, it is usually:
+如果你是安裝在內建硬碟，通常會是：
 
 `/Applications/WutheringWaves.app`
 
-If the game already launches fine and only resource path is the problem, you can skip this step.
+如果遊戲本來就能開，只有資源下載路徑問題，可略過這一步。
 
-## References
+## 參考資料
 
 1. [Moving Resources Into External Drive to Save Storage (Mac Case)](https://www.reddit.com/r/WutheringWaves/comments/1q16kio/moving_resources_into_external_drive_to_save/)
