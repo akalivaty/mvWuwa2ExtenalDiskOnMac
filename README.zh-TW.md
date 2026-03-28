@@ -165,6 +165,7 @@ du -hd 1 | sort -hr
 ![img](./assets/Screenshot%202026-03-29%20at%2003.51.06.png)
 ![img](./assets/Screenshot%202026-03-29%20at%2003.52.21.png)
 
+
 ### Codesign
 
 如果進入遊戲時出現像 `Failed to ...` 的啟動錯誤，可嘗試：
@@ -182,6 +183,51 @@ sudo codesign --sign - --force --deep "/Volumes/T7/Applications/WutheringWaves.a
 `/Applications/WutheringWaves.app`
 
 如果遊戲本來就能開，只有資源下載路徑問題，可略過這一步。
+
+### 清除舊資料
+
+如果已經開始下載額外資源，上一個版本的資料也不再重要，可以刪除檔案和對應的 symlink，釋放 Mac 可憐的內建儲存空間。
+
+實際上就算不刪除，最後額外資源下載完後，上一個版本的資料夾也會只剩下幾 KB 的資料，不佔空間，但如果想徹底清除，可以執行：
+
+```shell
+rm -rf "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.1.0"
+rm -rf "~/Library/Client/Saved/Resources/3.1.0"
+rm -rf /Volumes/T7/WuwaData/Resources/3.1.0
+```
+
+## 測試腳本 (測試中...先別用)
+
+使用方式：
+
+```bash
+chmod +x wuwa_symlink_menu.sh
+./wuwa_symlink_menu.sh
+```
+
+第一次跑時，建議先選：
+
+```text
+4) 重新設定版本號與路徑
+```
+
+然後輸入你這次的設定：
+
+```text
+版本號: 3.2.0
+外接硬碟名稱: T7
+外接資料夾名稱: WuwaData
+App container ID: com.kurogame.wutheringwaves.global
+```
+
+之後通常就是：
+
+- 1 建立 / 更新 symlink
+- 2 檢查狀態
+
+這兩個最常用。
+
+提醒一下，3) 移除 symlink 只會把兩個入口改回本機空資料夾，不會把 T7 上的資料搬回來，也不會刪 T7 上的資料。
 
 ## 參考資料
 

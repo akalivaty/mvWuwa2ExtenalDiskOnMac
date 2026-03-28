@@ -183,6 +183,51 @@ If your app is on internal storage, it is usually:
 
 If the game already launches fine and only resource path is the problem, you can skip this step.
 
+### Clean old data
+
+If you've already started downloading additional resources, the data from the previous version is no longer important. You can delete the files and corresponding symlinks to free up your Mac's limited built-in storage space.
+
+In fact, even if you don't delete them, after the additional resources finish downloading, the folder from the previous version will only have a few KB of data left, taking up almost no space. However, if you want to completely remove it, you can execute:
+
+```shell
+rm -rf "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.1.0"
+rm -rf "~/Library/Client/Saved/Resources/3.1.0"
+rm -rf /Volumes/T7/WuwaData/Resources/3.1.0
+```
+
+## Script (Testing... Don't use yet)
+
+Usage:
+
+```bash
+chmod +x wuwa_symlink_menu.sh
+./wuwa_symlink_menu.sh
+```
+
+The first time you run it, it's recommended to select:
+
+```text
+4) 重新設定版本號與路徑
+```
+
+Then input your settings:
+
+```text
+版本號: 3.2.0
+外接硬碟名稱: T7
+外接資料夾名稱: WuwaData
+App container ID: com.kurogame.wutheringwaves.global
+```
+
+Then usually it's just:
+
+- 1 Create / update symlink
+- 2 Check status
+
+These two are the most commonly used.
+
+Note that option 3) Remove symlink will only change the two entries back to local empty folders. It will not move data back from T7, nor will it delete data on T7.
+
 ## References
 
 1. [Moving Resources Into External Drive to Save Storage (Mac Case)](https://www.reddit.com/r/WutheringWaves/comments/1q16kio/moving_resources_into_external_drive_to_save/)
