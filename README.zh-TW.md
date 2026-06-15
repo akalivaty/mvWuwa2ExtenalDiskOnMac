@@ -37,18 +37,102 @@ T7
                 └── Base (downloading...)
 ```
 
-遊戲會使用兩個資源路徑：
+遊戲可能會使用兩個資源路徑：
 
 1. `~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0`
 2. `~/Library/Client/Saved/Resources/3.2.0`
 
 > [!note]
-> 一開始鳴潮通常會先下載額外資源到第一個路徑，如果發現該目錄有 symlink 則會要出現儲存錯誤。此時必須進行 codesign，再次開啟遊戲會將資源下載到第二個路徑，所以兩個目錄都要建立 symlink 才能確保遊戲資源正確下載到外接硬碟。
+> App Store 版本預設會跑在 macOS app sandbox 裡，所以資源通常會寫到第一個 container 路徑。如果用普通 ad-hoc 簽章重新 codesign，通常會移除原本的 sandbox entitlement，遊戲之後可能改用第二個路徑。
 
-> [!caution]
-> 內建硬碟要有足夠的空間才能啟動下載動作，大概80GB。或許可以嘗試修改影碟空間大小，欺騙鳴潮的空間檢測。
+> [!warning]
+> 內建硬碟可能仍然要有足夠空間才能啟動下載動作，大概 80GB。這看起來像下載前的空間檢查，可能發生在遊戲跟到最終 symlink 目標之前。
 
-## 完整步驟
+## 建議順序
+
+### 選項 1：先 Codesign，再連結資源版本資料夾
+
+這是 App Store 全新安裝到外接硬碟時最推薦的路線：
+
+1. 先用 App Store 把 `WutheringWaves.app` 安裝到外接硬碟。
+2. 在下載大量遊戲內資源前，先重新 codesign。
+3. 讓遊戲改走 unsandbox 後的路徑：`~/Library/Client`。
+4. 讓 `~/Library/Client/Saved/Resources` 保持本機實體資料夾。
+5. 只把版本號資料夾，例如 `3.2.0` 或 `3.4.0`，symlink 到外接硬碟。
+
+重新簽 app：
+
+```shell
+sudo codesign --sign - --force --deep "/Volumes/T7/Applications/WutheringWaves.app"
+```
+
+> [!note]
+> 這個指令會用 ad-hoc 簽章重新簽 app。因為沒有加 `--preserve-metadata=entitlements`，通常不會保留原本 App Store 簽章裡的 entitlements。
+>
+> 關鍵 entitlement 是： com.apple.security.app-sandbox
+>
+> App Sandbox 主要就是靠這個 entitlement。當它被移除後，macOS 就不再把鳴潮當成 sandbox app 執行。這時遊戲通常不再寫到 container 路徑： `~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client`
+>
+> 而是改寫到一般使用者 Library 路徑： `~/Library/Client`
+>
+> 這就是為什麼這份文件把它放在第一推薦。如果你一開始就打算在安裝完後立刻 codesign，而且確認 sandbox entitlement 已經消失，通常就不需要再替 container 資源路徑建立 symlink。
+
+可以用這個指令檢查目前 entitlements：
+
+```shell
+codesign -d --entitlements :- "/Volumes/T7/Applications/WutheringWaves.app"
+```
+
+如果已經看不到 `com.apple.security.app-sandbox`，只處理 `~/Library/Client` 路徑即可：
+
+```shell
+mkdir -p "$HOME/Library/Client/Saved/Resources"
+mkdir -p "/Volumes/T7/WuwaData/Resources/3.2.0"
+ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "$HOME/Library/Client/Saved/Resources/3.2.0"
+```
+
+> [!warning]
+> 如果 `~/Library/Client/Saved/Resources/3.2.0` 已經是實體資料夾，請先把內容搬移或複製到 `/Volumes/T7/WuwaData/Resources/3.2.0`，再建立 symlink。
+
+### 選項 2：把整個 Client 資料夾做成 symlink
+
+這是第二選擇。重新簽名後這個方法比較省事，因為之後所有新的 `Client` 資料都會自動建立在外接硬碟，但它移動的不只是下載資源。
+
+請只在 app 已重新 codesign，而且遊戲已完全關閉後執行：
+
+```shell
+mkdir -p "/Volumes/T7/WuwaData/Client"
+mv "$HOME/Library/Client" "$HOME/Library/Client.old"
+ln -s "/Volumes/T7/WuwaData/Client" "$HOME/Library/Client"
+```
+
+如果 `~/Library/Client` 裡已經有重要資料，請先複製或搬到 `/Volumes/T7/WuwaData/Client`，再建立 symlink。
+
+如果 App Store 更新恢復原本 sandbox 簽章，鳴潮可能又回去使用 container 路徑，直到你再次 codesign。
+
+### 選項 3：最保守的備援方法
+
+以下情況再用這個方法：
+
+- 你已經在重新 codesign 前啟動過遊戲
+- `com.apple.security.app-sandbox` 仍然存在
+- 你不確定遊戲目前使用 container 路徑還是 `~/Library/Client`
+- App Store 更新恢復了原本簽章
+
+這個備援方法會同時處理兩個可能位置裡的版本號資料夾。
+
+讓上一層 `Resources` 保持本機實體資料夾，只把裡面的版本號資料夾做成 symlink：
+
+```text
+Resources/
+├── 3.1.0 -> /Volumes/T7/WuwaData/Resources/3.1.0
+├── 3.2.0 -> /Volumes/T7/WuwaData/Resources/3.2.0
+└── 3.4.0 -> /Volumes/T7/WuwaData/Resources/3.4.0
+```
+
+除非是在實驗，否則不建議把整個 `Resources` 資料夾做成 symlink。其他使用者回報，大版本更新時鳴潮可能會建立新的版本資料夾，但 patch 或空間偵測會失敗。
+
+## 最保守備援步驟
 
 ### Step 0：先完全關掉遊戲
 
@@ -76,17 +160,17 @@ mkdir -p "/Volumes/T7/WuwaData/Resources/3.2.0"
 先刪除本機原本的 `3.2.0` 或搬到 T7：
 
 ```shell
-rm -rf "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
+rm -rf "$HOME/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
 ```
 
 ```shell
-mv "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0" "/Volumes/T7/WuwaData/Resources/3.2.0"
+mv "$HOME/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0" "/Volumes/T7/WuwaData/Resources/3.2.0"
 ```
 
 再建立連結：
 
 ```shell
-ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
+ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "$HOME/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
 ```
 
 ### Step 3：把第二個入口也改成 symlink
@@ -94,13 +178,13 @@ ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Containers/com.kurogame.
 先刪除本機原本的 `3.2.0`：
 
 ```shell
-rm -rf "~/Library/Client/Saved/Resources/3.2.0"
+rm -rf "$HOME/Library/Client/Saved/Resources/3.2.0"
 ```
 
 再建立連結：
 
 ```shell
-ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Client/Saved/Resources/3.2.0"
+ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "$HOME/Library/Client/Saved/Resources/3.2.0"
 ```
 
 ### Step 4：檢查兩條路徑是否都正確
@@ -108,11 +192,11 @@ ln -s "/Volumes/T7/WuwaData/Resources/3.2.0" "~/Library/Client/Saved/Resources/3
 執行：
 
 ```shell
-ls -l "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
+ls -l "$HOME/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.2.0"
 ```
 
 ```shell
-ls -l "~/Library/Client/Saved/Resources/3.2.0"
+ls -l "$HOME/Library/Client/Saved/Resources/3.2.0"
 ```
 
 理想結果會像：
@@ -161,18 +245,9 @@ du -hd 1 | sort -hr
 ![img](./assets/Screenshot%202026-03-29%20at%2003.51.06.png)
 ![img](./assets/Screenshot%202026-03-29%20at%2003.52.21.png)
 
-### Codesign
+### Codesign 截圖
 
 ![error_message_in_game](./assets/error_message_in_game.png)
-
-如果進入遊戲時出現像 `Failed to get patch list: Failed to store files` 的啟動錯誤，可嘗試：
-
-```shell
-sudo codesign --sign - --force --deep "/Volumes/T7/Applications/WutheringWaves.app"
-```
-
-這步驟會花一段時間，在 mba m4 大約需要 2.5 分鐘。
-
 ![time_spent](./assets/time_spent.png)
 
 這裡的路徑是因為透過 App Store 安裝到外接硬碟：
@@ -183,8 +258,6 @@ sudo codesign --sign - --force --deep "/Volumes/T7/Applications/WutheringWaves.a
 
 `/Applications/WutheringWaves.app`
 
-如果遊戲本來就能開，只有資源下載路徑問題，可略過這一步。
-
 ### 清除舊資料
 
 如果已經開始下載額外資源，上一個版本的資料也不再重要，可以刪除檔案和對應的 symlink，釋放 Mac 可憐的內建儲存空間。
@@ -192,8 +265,8 @@ sudo codesign --sign - --force --deep "/Volumes/T7/Applications/WutheringWaves.a
 實際上就算不刪除，最後額外資源下載完後，上一個版本的資料夾也會只剩下幾 KB 的資料，不佔空間，但如果想徹底清除，可以執行：
 
 ```shell
-rm -rf "~/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.1.0"
-rm -rf "~/Library/Client/Saved/Resources/3.1.0"
+rm -rf "$HOME/Library/Containers/com.kurogame.wutheringwaves.global/Data/Library/Client/Saved/Resources/3.1.0"
+rm -rf "$HOME/Library/Client/Saved/Resources/3.1.0"
 rm -rf /Volumes/T7/WuwaData/Resources/3.1.0
 ```
 
